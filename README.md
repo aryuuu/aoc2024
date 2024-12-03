@@ -12,6 +12,12 @@ e.g.
 zig build day1
 ```
 
+running part 2
+
+```shell
+zig build day1 -- part2
+```
+
 ## Running test
 
 ```shell
