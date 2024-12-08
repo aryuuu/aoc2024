@@ -102,6 +102,21 @@ pub fn build(b: *std.Build) void {
     const run_day4_step = b.step("day4", "Run the app");
     run_day4_step.dependOn(&run_day4_cmd.step);
 
+    const day5_exe = b.addExecutable(.{
+        .name = "aoc2025_day5",
+        .root_source_file = b.path("src/day5.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(day5_exe);
+    const run_day5_cmd = b.addRunArtifact(day5_exe);
+    run_day5_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_day5_cmd.addArgs(args);
+    }
+    const run_day5_step = b.step("day5", "Run the app");
+    run_day5_step.dependOn(&run_day5_cmd.step);
+
     // TESTS
     const exe_unit_tests = b.addTest(.{
         .root_source_file = b.path("src/main.zig"),
@@ -138,6 +153,13 @@ pub fn build(b: *std.Build) void {
     });
     const run_day4_unit_tests = b.addRunArtifact(day4_unit_tests);
 
+    const day5_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/day5.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_day5_unit_tests = b.addRunArtifact(day5_unit_tests);
+
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
@@ -146,9 +168,11 @@ pub fn build(b: *std.Build) void {
     const test_day2_step = b.step("test_day2", "Run unit tests for day2");
     const test_day3_step = b.step("test_day3", "Run unit tests for day3");
     const test_day4_step = b.step("test_day4", "Run unit tests for day4");
+    const test_day5_step = b.step("test_day5", "Run unit tests for day5");
     test_step.dependOn(&run_exe_unit_tests.step);
     test_day1_step.dependOn(&run_day1_unit_tests.step);
     test_day2_step.dependOn(&run_day2_unit_tests.step);
     test_day3_step.dependOn(&run_day3_unit_tests.step);
     test_day4_step.dependOn(&run_day4_unit_tests.step);
+    test_day5_step.dependOn(&run_day5_unit_tests.step);
 }
