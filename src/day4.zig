@@ -26,7 +26,20 @@ pub fn main() !void {
         try lines.append(val);
     }
 
-    const result = try part1(lines.items);
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    const should_run_part_2 = for (args[1..]) |arg| {
+        if (std.mem.eql(u8, arg, "part2")) break true;
+    } else false;
+
+    var result: usize = undefined;
+    if (should_run_part_2) {
+        result = try part2(lines.items);
+    } else {
+        result = try part1(lines.items);
+    }
+
     std.debug.print("result: {d}\n", .{result});
 }
 
@@ -128,6 +141,34 @@ fn part1(input: []const []const u8) !usize {
     return total;
 }
 
+fn part2(input: []const []const u8) !usize {
+    var total: usize = 0;
+    const line_len: usize = input[0].len;
+    for (1..input.len - 1) |i| {
+        for (1..line_len - 1) |j| {
+            if (input[i][j] != 'A') {
+                continue;
+            }
+
+            if (!((input[i - 1][j - 1] == 'M' and input[i + 1][j + 1] == 'S') or
+                (input[i - 1][j - 1] == 'S' and input[i + 1][j + 1] == 'M')))
+            {
+                continue;
+            }
+
+            if (!((input[i + 1][j - 1] == 'M' and input[i - 1][j + 1] == 'S') or
+                (input[i + 1][j - 1] == 'S' and input[i - 1][j + 1] == 'M')))
+            {
+                continue;
+            }
+
+            total += 1;
+        }
+    }
+
+    return total;
+}
+
 test "part1" {
     const input = [_][]const u8{
         "MMMSXXMASM",
@@ -143,4 +184,21 @@ test "part1" {
     };
     const result = try part1(&input);
     try std.testing.expectEqual(@as(usize, 18), result);
+}
+
+test "part2" {
+    const input = [_][]const u8{
+        "MMMSXXMASM",
+        "MSAMXMSMSA",
+        "AMXSXMAAMM",
+        "MSAMASMSMX",
+        "XMASAMXAMM",
+        "XXAMMXXAMA",
+        "SMSMSASXSS",
+        "SAXAMASAAA",
+        "MAMMMXMMMM",
+        "MXMXAXMASX",
+    };
+    const result = try part2(&input);
+    try std.testing.expectEqual(@as(usize, 9), result);
 }
