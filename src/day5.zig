@@ -5,11 +5,24 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
-    const result = try part1(allocator, "./input/day5.txt");
-    std.debug.print("result: {}\n", .{result});
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    const should_run_part_2 = for (args[1..]) |arg| {
+        if (std.mem.eql(u8, arg, "part2")) break true;
+    } else false;
+
+    var result: usize = undefined;
+    if (should_run_part_2) {
+        result = try solve(allocator, "./input/day5.txt", false);
+    } else {
+        result = try solve(allocator, "./input/day5.txt", true);
+    }
+
+    std.debug.print("result: {d}\n", .{result});
 }
 
-fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
+fn solve(allocator: std.mem.Allocator, filename: []const u8, should_take_correct: bool) !usize {
     const file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
 
@@ -77,7 +90,7 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
                 for (i..pages.len - 1) |j| {
                     if (order_map.get(pages[i])) |outer| {
                         if (outer.get(pages[j + 1])) |inner| {
-                            if (inner != RelativePos.after) {
+                            if ((inner != RelativePos.after) == should_take_correct) {
                                 is_good = false;
                                 break :outer_loop;
                             }
@@ -90,7 +103,7 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
                 for (0..i) |j| {
                     if (order_map.get(pages[i])) |outer| {
                         if (outer.get(pages[i - j - 1])) |inner| {
-                            if (inner != RelativePos.before) {
+                            if ((inner != RelativePos.before) == should_take_correct) {
                                 is_good = false;
                                 break :outer_loop;
                             }
@@ -128,10 +141,13 @@ const RelativePos = enum {
     after,
 };
 
-test "part1" {
+test "solve" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
-    const result = try part1(allocator, "./input/day5.test.txt");
+    const result = try solve(allocator, "./input/day5.test.txt", true);
     try std.testing.expectEqual(@as(i32, 143), result);
+
+    const result1 = try solve(allocator, "./input/day5.test.txt", false);
+    try std.testing.expectEqual(@as(i32, 123), result1);
 }
