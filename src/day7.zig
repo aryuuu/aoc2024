@@ -21,9 +21,6 @@ pub fn main() !void {
     }
 
     std.debug.print("result: {d}\n", .{result});
-
-    // const result = try part1(allocator, "./input/day7.txt");
-    // std.debug.print("result: {d}\n", .{result});
 }
 
 fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
@@ -57,46 +54,44 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
             try equation.numbers.append(num);
         }
 
-        const operatorCombinations = try generateOperatorPermutations(allocator, &operators, equation.numbers.items.len - 1);
-        defer {
-            for (operatorCombinations.items) |comb| {
-                comb.deinit();
-            }
-            operatorCombinations.deinit();
-        }
-
-        for (operatorCombinations.items) |comb| {
-            // std.debug.print("======\n", .{});
-            // std.debug.print("{d}: {d} ", .{ equation.total, equation.numbers.items[0] });
-            var temp: usize = equation.numbers.items[0];
-            for (comb.items, 0..) |op, i| {
-                const a = equation.numbers.items[i + 1];
-                switch (op) {
-                    Operator.add => {
-                        // std.debug.print("+ {d} ", .{a});
-                        temp += a;
-                    },
-                    Operator.multiply => {
-                        // std.debug.print("* {d} ", .{a});
-                        temp *= a;
-                    },
-                    else => {},
-                }
-                if (temp > equation.total) {
-                    break;
-                }
-            }
-
-            // std.debug.print(" ==> {}\n", .{temp});
-            if (temp == equation.total) {
-                // std.debug.print("HIT temp: {d}, total: {d}\n", .{ temp, equation.total });
-                total += temp;
-                break;
-            }
+        if (permutationHelper(&operators, equation.total, equation.numbers.items[0], equation.numbers.items, 1)) |result| {
+            total += result;
         }
     }
 
     return total;
+}
+
+fn permutationHelper(operators: []const Operator, target: usize, temp_tot: usize, numbers: []const usize, idx: usize) ?usize {
+    if (idx == numbers.len) {
+        if (target == temp_tot) {
+            return target;
+        } else {
+            return null;
+        }
+    }
+
+    if (temp_tot > target) {
+        return null;
+    }
+
+    for (operators) |op| {
+        var new_temp: usize = temp_tot;
+        switch (op) {
+            Operator.add => new_temp += numbers[idx],
+            Operator.multiply => new_temp *= numbers[idx],
+            Operator.concat => {
+                const digitCount = getDigitCount(numbers[idx]);
+                new_temp *= std.math.pow(usize, 10, digitCount);
+                new_temp += numbers[idx];
+            },
+        }
+        if (permutationHelper(operators, target, new_temp, numbers, idx + 1)) |res| {
+            return res;
+        }
+    }
+
+    return null;
 }
 
 fn part2(allocator: std.mem.Allocator, filename: []const u8) !usize {
@@ -130,44 +125,8 @@ fn part2(allocator: std.mem.Allocator, filename: []const u8) !usize {
             try equation.numbers.append(num);
         }
 
-        const operatorCombinations = try generateOperatorPermutations(allocator, &operators, equation.numbers.items.len - 1);
-        defer {
-            for (operatorCombinations.items) |comb| {
-                comb.deinit();
-            }
-            operatorCombinations.deinit();
-        }
-
-        for (operatorCombinations.items) |comb| {
-            // std.debug.print("======\n", .{});
-            // std.debug.print("{d}: {d} ", .{ equation.total, equation.numbers.items[0] });
-            var temp: usize = equation.numbers.items[0];
-            for (comb.items, 0..) |op, i| {
-                const a = equation.numbers.items[i + 1];
-                switch (op) {
-                    Operator.add => {
-                        // std.debug.print("+ {d} ", .{a});
-                        temp += a;
-                    },
-                    Operator.multiply => {
-                        // std.debug.print("* {d} ", .{a});
-                        temp *= a;
-                    },
-                    Operator.concat => {
-                        // std.debug.print("|| {d} ", .{a});
-                        const digitCount = getDigitCount(a);
-                        temp *= std.math.pow(usize, 10, digitCount);
-                        temp += a;
-                    },
-                }
-            }
-
-            // std.debug.print(" ==> {}\n", .{temp});
-            if (temp == equation.total) {
-                // std.debug.print("HIT temp: {d}, total: {d}\n", .{ temp, equation.total });
-                total += temp;
-                break;
-            }
+        if (permutationHelper(&operators, equation.total, equation.numbers.items[0], equation.numbers.items, 1)) |result| {
+            total += result;
         }
     }
 
@@ -183,40 +142,6 @@ fn getDigitCount(n: usize) usize {
         count += 1;
     }
     return count;
-}
-
-fn generateOperatorPermutations(allocator: std.mem.Allocator, operators: []const Operator, len: usize) !std.ArrayList(std.ArrayList(Operator)) {
-    var result = std.ArrayList(std.ArrayList(Operator)).init(allocator);
-
-    var curr_list = std.ArrayList(Operator).init(allocator);
-    defer curr_list.deinit();
-    try generatorHelper(allocator, operators, &curr_list, &result, len);
-
-    return result;
-}
-
-fn generatorHelper(allocator: std.mem.Allocator, operators: []const Operator, curr_list: *std.ArrayList(Operator), comb_list: *std.ArrayList(std.ArrayList(Operator)), len: usize) !void {
-    if (curr_list.items.len == len) {
-        const curr_copy = try curr_list.clone();
-        try comb_list.append(curr_copy);
-        return;
-    }
-
-    for (operators) |op| {
-        var curr_copy = try curr_list.clone();
-        defer curr_copy.deinit();
-        try curr_copy.append(op);
-        try generatorHelper(allocator, operators, &curr_copy, comb_list, len);
-    }
-}
-
-fn factorial(n: u64) u64 {
-    var res = 1;
-    for (1..(n + 1)) |i| {
-        res *= i;
-    }
-
-    return res;
 }
 
 const Equation = struct {
