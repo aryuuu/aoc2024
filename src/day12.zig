@@ -305,9 +305,10 @@ fn part2(allocator: std.mem.Allocator, filename: []const u8) !usize {
             }
 
             var sides: usize = 0;
-            // up
-            {
-                var iter = up_sides.iterator();
+
+            const all_sides = [4]std.AutoHashMap(usize, std.ArrayList(usize)){up_sides, down_sides, right_sides, left_sides};
+            for (all_sides) |v| {
+                var iter = v.iterator();
                 while (iter.next()) |e| {
                     const arr = e.value_ptr.*;
                     std.mem.sort(usize, arr.items, {}, std.sort.asc(usize));
@@ -317,56 +318,6 @@ fn part2(allocator: std.mem.Allocator, filename: []const u8) !usize {
                         const curr = arr.items[idx];
                         const next = arr.items[idx+1];
                         if (next != curr+1) {
-                            sides += 1;
-                        }
-                    }
-                }
-            }
-            // bottom
-            {
-                var iter = down_sides.iterator();
-                while (iter.next()) |e| {
-                    const arr = e.value_ptr.*;
-                    std.mem.sort(usize, arr.items, {}, std.sort.asc(usize));
-                    sides += 1;
-                    for (0..arr.items.len-1) |idx| {
-                        const curr = arr.items[idx];
-                        const next = arr.items[idx+1];
-                        if (next != curr+1) {
-                            sides += 1;
-                        }
-                    }
-                }
-            }
-            // right
-            {
-                var iter = right_sides.iterator();
-                while (iter.next()) |e| {
-                    sides += 1;
-                    const arr = e.value_ptr.*;
-                    std.mem.sort(usize, arr.items, {}, std.sort.asc(usize));
-
-                    for (0..arr.items.len-1) |idx| {
-                        const curr = arr.items[idx];
-                        const next = arr.items[idx+1];
-                        if (next != curr+1) {
-                            sides += 1;
-                        }
-                    }
-                }
-            }
-            // left
-            {
-                var iter = left_sides.iterator();
-                while (iter.next()) |e| {
-                    sides += 1;
-                    const arr = e.value_ptr.*;
-                    std.mem.sort(usize, arr.items, {}, std.sort.asc(usize));
-
-                    for (0..arr.items.len-1) |idx| {
-                        const curr = arr.items[idx];
-                        const next = arr.items[idx+1];
-                        if (next != curr + 1) {
                             sides += 1;
                         }
                     }
