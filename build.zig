@@ -222,6 +222,21 @@ pub fn build(b: *std.Build) void {
     const run_day12_step = b.step("day12", "Run the app");
     run_day12_step.dependOn(&run_day12_cmd.step);
 
+    const day14_exe = b.addExecutable(.{
+        .name = "aoc20214_day14",
+        .root_source_file = b.path("src/day14.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(day14_exe);
+    const run_day14_cmd = b.addRunArtifact(day14_exe);
+    run_day14_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_day14_cmd.addArgs(args);
+    }
+    const run_day14_step = b.step("day14", "Run the app");
+    run_day14_step.dependOn(&run_day14_cmd.step);
+
     // TESTS
     const exe_unit_tests = b.addTest(.{
         .root_source_file = b.path("src/main.zig"),
@@ -314,6 +329,13 @@ pub fn build(b: *std.Build) void {
     });
     const run_day12_unit_tests = b.addRunArtifact(day12_unit_tests);
 
+    const day14_unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/day14.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_day14_unit_tests = b.addRunArtifact(day14_unit_tests);
+
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
     // running the unit tests.
@@ -330,6 +352,7 @@ pub fn build(b: *std.Build) void {
     const test_day10_step = b.step("test_day10", "Run unit tests for day10");
     const test_day11_step = b.step("test_day11", "Run unit tests for day11");
     const test_day12_step = b.step("test_day12", "Run unit tests for day12");
+    const test_day14_step = b.step("test_day14", "Run unit tests for day14");
     test_step.dependOn(&run_exe_unit_tests.step);
     test_day1_step.dependOn(&run_day1_unit_tests.step);
     test_day2_step.dependOn(&run_day2_unit_tests.step);
@@ -343,4 +366,5 @@ pub fn build(b: *std.Build) void {
     test_day10_step.dependOn(&run_day10_unit_tests.step);
     test_day11_step.dependOn(&run_day11_unit_tests.step);
     test_day12_step.dependOn(&run_day12_unit_tests.step);
+    test_day14_step.dependOn(&run_day14_unit_tests.step);
 }
