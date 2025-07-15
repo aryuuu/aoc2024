@@ -22,7 +22,8 @@ pub fn build(b: *std.Build) !void {
         .{ .name = "day11" },
         .{ .name = "day12" },
         .{ .name = "day14" },
-        // .{ .name = "day15" },
+        .{ .name = "day15" },
+        .{ .name = "day16" },
     }) |e| {
         const test_step_name = try std.fmt.allocPrint(b.allocator, "test_{s}", .{e.name});
         const root_source_file = try std.fmt.allocPrint(b.allocator, "src/{s}.zig", .{e.name});

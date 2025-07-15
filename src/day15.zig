@@ -25,35 +25,38 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
         grid.deinit();
         movements.deinit();
     }
-    var robot_pos = Point{.x=0, .y=0};
+    var robot_pos = Point{ .x = 0, .y = 0 };
 
     var buf: [1024]u8 = undefined;
     // parse the map
     var i: usize = 0;
     while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        if (line.len == 1) {
+        if (line.len == 0) {
             break;
         }
 
         var row = std.ArrayList(Cell).init(allocator);
-        for (line[0..line.len-1], 0..) |char, j| {
+        for (line[0 .. line.len], 0..) |char, j| {
             switch (char) {
                 '#' => try row.append(Cell.wall),
                 '@' => {
-                    try row.append(Cell.bot); 
+                    try row.append(Cell.bot);
                     robot_pos.x = j;
                     robot_pos.y = i;
                 },
-                '0' => try row.append(Cell.box),
+                'O' => try row.append(Cell.box),
                 '.' => try row.append(Cell.empty),
-                else => unreachable,
+                else => {
+                    std.debug.print("got {c} wtf\n", .{char});
+                    unreachable;
+                },
             }
         }
         try grid.append(row);
         i += 1;
     }
 
-    // parse ke bot movement
+    // parse bot movement
     while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
         for (line) |char| {
             switch (char) {
@@ -68,69 +71,126 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
     }
 
     var result: usize = 0;
-    for (movements.items) |m| {
+    outer: for (movements.items) |m| {
         switch (m) {
-            // robot can move if there's an empty space between it and the wall
-            // start from the bot position, and move up until we met either an empty space or a wall
-            // if it is a wall then do nothing
-            // if it is a box then shift everything from the bot starting point into the empty space, boxes included
+            // here's what we are going to do
+            // move towards the direction until we found an empty space or a wall
+            // if it is a wall do nothing
+            // if it is an empty space do the following:
+            // - put boxes starting from where the empty place is found up to 2 cells before the bot position
+            // - put bot on the next cell in the direction of the movement
+            // - remove bot from the original cell
+            // - update the bot pos obj
             Direction.up => {
-                var y = robot_pos.y;
-                var end_y: ?usize = null;
-                while (y >= 0) {
-                    const cell = grid.items[y].items[robot_pos.x];
+                var py = robot_pos.y;
+                while (py > 0) {
+                    py -= 1;
+                    const cell = grid.items[py].items[robot_pos.x];
                     switch (cell) {
-                        Cell.wall => break,
-                        Cell.empty => end_y = y,
-                        else => y -= 1,
-                    }
-
-                    if (end_y) |val| {
-                        // let's do a circular shift
-                        // here's what i mean by that
-                        // before the shift
-                        // 1 2 3 4 5
-                        // after the shift
-                        // 5 1 2 3 4
-                        const circ_size: usize = val - y;
-                        const base_offset: usize = y;
-
-                        for (y..val) |idx| {
-                            const next_y: usize = ((idx - y + 1) % circ_size) + base_offset;
-                            grid.items[next_y].items[robot_pos.x] = grid.items[idx].items[robot_pos.x];
-                        }
+                        Cell.wall => continue :outer,
+                        Cell.empty => break,
+                        else => continue,
                     }
                 }
+
+                for (py..robot_pos.y) |y| {
+                    grid.items[y].items[robot_pos.x] = Cell.box;
+                }
+                robot_pos.y -= 1;
+                grid.items[robot_pos.y].items[robot_pos.x] = Cell.bot;
+                grid.items[robot_pos.y+1].items[robot_pos.x] = Cell.empty;
             },
             Direction.down => {
-                var y = robot_pos.y;
-                var end_y: ?usize = null;
-                while (y < grid.items.len) {
-                    const cell = grid.items[y].items[robot_pos.x];
+                var py = robot_pos.y;
+                while (py < grid.items.len - 1) {
+                    py += 1;
+                    const cell = grid.items[py].items[robot_pos.x];
                     switch (cell) {
-                        Cell.wall => break,
-                        Cell.empty => end_y = y,
-                        else => y += 1,
-                    }
-
-                    if (end_y) |val| {
-                        const circ_size: usize = y - val;
-                        const base_offset: usize = val;
-
-                        for (val..y) |idx| {
-                            const next_y: usize = ((idx - y + 1) % circ_size) + base_offset;
-                            grid.items[next_y].items[robot_pos.x] = grid.items[idx].items[robot_pos.x];
-                        }
+                        Cell.wall => continue :outer,
+                        Cell.empty => break,
+                        else => continue,
                     }
                 }
+
+                for (robot_pos.y.. py) |y| {
+                    grid.items[y+1].items[robot_pos.x] = Cell.box;
+                }
+                robot_pos.y += 1;
+                grid.items[robot_pos.y].items[robot_pos.x] = Cell.bot;
+                grid.items[robot_pos.y-1].items[robot_pos.x] = Cell.empty;
+            },
+            Direction.left => {
+                var px = robot_pos.x;
+                while (px > 0) {
+                    px -= 1;
+                    const cell = grid.items[robot_pos.y].items[px];
+                    switch (cell) {
+                        Cell.wall => continue :outer,
+                        Cell.empty => break,
+                        else => continue,
+                    }
+                }
+
+                for (px..robot_pos.x) |x| {
+                    grid.items[robot_pos.y].items[x] = Cell.box;
+                }
+                robot_pos.x -= 1;
+                grid.items[robot_pos.y].items[robot_pos.x] = Cell.bot;
+                grid.items[robot_pos.y].items[robot_pos.x+1] = Cell.empty;
+            },
+            Direction.right => {
+                var px = robot_pos.x;
+                while (px < grid.items[0].items.len - 1) {
+                    px += 1;
+                    const cell = grid.items[robot_pos.y].items[px];
+                    switch (cell) {
+                        Cell.wall => continue :outer,
+                        Cell.empty => break,
+                        else => continue,
+                    }
+                }
+
+                for (robot_pos.x.. px) |x| {
+                    grid.items[robot_pos.y].items[x+1] = Cell.box;
+                }
+                robot_pos.x += 1;
+                grid.items[robot_pos.y].items[robot_pos.x] = Cell.bot;
+                grid.items[robot_pos.y].items[robot_pos.x-1] = Cell.empty;
             },
         }
+
+        // std.debug.print("{}\n", .{m});
+        // for (0..grid.items.len) |fy| {
+        //     for (0..grid.items[fy].items.len) |fx| {
+        //         switch (grid.items[fy].items[fx]) {
+        //             Cell.box => std.debug.print("O", .{}),
+        //             Cell.wall => std.debug.print("#", .{}),
+        //             Cell.bot => std.debug.print("@", .{}),
+        //             Cell.empty => std.debug.print(".", .{}),
+        //         }
+        //     }
+        //     std.debug.print("\n", .{});
+        // }
+        // std.debug.print("\n", .{});
     }
+
+    // for (0..grid.items.len) |fy| {
+    //     for (0..grid.items[fy].items.len) |fx| {
+    //         switch (grid.items[fy].items[fx]) {
+    //             Cell.box => std.debug.print("O", .{}),
+    //             Cell.wall => std.debug.print("#", .{}),
+    //             Cell.bot => std.debug.print("@", .{}),
+    //             Cell.empty => std.debug.print(".", .{}),
+    //         }
+    //     }
+    //     std.debug.print("\n", .{});
+    // }
+    // std.debug.print("\n", .{});
 
     for (0..grid.items.len) |y| {
         for (0..grid.items[y].items.len) |x| {
-            switch (grid.items[i].items[x]) {
-                Cell.box => result += x * y,
+            switch (grid.items[y].items[x]) {
+                Cell.box => result += x + 100 * y,
                 else => {},
             }
         }
@@ -138,16 +198,15 @@ fn part1(allocator: std.mem.Allocator, filename: []const u8) !usize {
     return result;
 }
 
-const Point = struct {x: usize, y: usize};
+const Point = struct { x: usize, y: usize };
 
-const Cell = enum {wall, bot, box, empty};
-const Direction = enum {up, down, left, right};
+const Cell = enum { wall, bot, box, empty };
+const Direction = enum { up, down, left, right };
 
 test "part 1" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer _ = gpa.deinit();
+    std.debug.print("test part 1\n", .{});
+    const allocator = std.testing.allocator;
 
     const result = try part1(allocator, "./input/day15.test.txt");
-    try std.testing.expectEqual(10092, result);
+    try std.testing.expectEqual(2028, result);
 }
